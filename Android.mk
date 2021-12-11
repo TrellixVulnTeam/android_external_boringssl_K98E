@@ -10,11 +10,13 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libcrypto_static
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include
+LOCAL_SHARED_LIBRARIES=libcutils
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk $(LOCAL_PATH)/crypto-sources.mk
-LOCAL_SDK_VERSION := 9
+#LOCAL_SDK_VERSION := 9
 LOCAL_CFLAGS += -fvisibility=hidden -DBORINGSSL_SHARED_LIBRARY -DBORINGSSL_IMPLEMENTATION -DOPENSSL_SMALL -Wno-unused-parameter
 # sha256-armv4.S does not compile with clang.
+LOCAL_CFLAGS += -DANDROID_BORINGSSL_LOG
 LOCAL_CLANG_ASFLAGS_arm += -no-integrated-as
 LOCAL_CLANG_ASFLAGS_arm64 += -march=armv8-a+crypto
 include $(LOCAL_PATH)/crypto-sources.mk
@@ -24,10 +26,12 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libcrypto
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include
+LOCAL_SHARED_LIBRARIES=libcutils liblog
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk $(LOCAL_PATH)/crypto-sources.mk
 LOCAL_CFLAGS += -fvisibility=hidden -DBORINGSSL_SHARED_LIBRARY -DBORINGSSL_IMPLEMENTATION -DOPENSSL_SMALL -Wno-unused-parameter
-LOCAL_SDK_VERSION := 9
+LOCAL_CFLAGS += -DANDROID_BORINGSSL_LOG
+#LOCAL_SDK_VERSION := 9
 # sha256-armv4.S does not compile with clang.
 LOCAL_CLANG_ASFLAGS_arm += -no-integrated-as
 LOCAL_CLANG_ASFLAGS_arm64 += -march=armv8-a+crypto
@@ -42,6 +46,11 @@ LOCAL_MODULE := bssl
 LOCAL_MODULE_TAGS := optional
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk $(LOCAL_PATH)/sources.mk
 LOCAL_CFLAGS += -fvisibility=hidden -DBORINGSSL_SHARED_LIBRARY -DBORINGSSL_IMPLEMENTATION -DOPENSSL_SMALL -Wno-unused-parameter
+LOCAL_SHARED_LIBRARIES=libcutils liblog
+LOCAL_CFLAGS += -DANDROID_BORINGSSL_LOG
+ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+LOCAL_CFLAGS += -DINIT_ENG_BUILD
+endif
 LOCAL_SHARED_LIBRARIES=libcrypto libssl
 include $(LOCAL_PATH)/sources.mk
 LOCAL_SRC_FILES = $(tool_sources)
@@ -94,8 +103,13 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libssl_static
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk $(LOCAL_PATH)/ssl-sources.mk
-LOCAL_SDK_VERSION := 9
+LOCAL_SHARED_LIBRARIES=libcutils liblog
+#LOCAL_SDK_VERSION := 9
 LOCAL_CFLAGS += -fvisibility=hidden -DBORINGSSL_SHARED_LIBRARY -DBORINGSSL_IMPLEMENTATION -DOPENSSL_SMALL -Wno-unused-parameter
+LOCAL_CFLAGS += -DANDROID_BORINGSSL_LOG
+ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+LOCAL_CFLAGS += -DINIT_ENG_BUILD
+endif
 include $(LOCAL_PATH)/ssl-sources.mk
 include $(BUILD_STATIC_LIBRARY)
 
@@ -103,11 +117,15 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libssl
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk $(LOCAL_PATH)/ssl-sources.mk
 LOCAL_CFLAGS += -fvisibility=hidden -DBORINGSSL_SHARED_LIBRARY -DBORINGSSL_IMPLEMENTATION -DOPENSSL_SMALL -Wno-unused-parameter
-LOCAL_SHARED_LIBRARIES=libcrypto
-LOCAL_SDK_VERSION := 9
+LOCAL_CFLAGS += -DANDROID_BORINGSSL_LOG
+LOCAL_SHARED_LIBRARIES=libcrypto libcutils liblog
+ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+LOCAL_CFLAGS += -DINIT_ENG_BUILD
+endif
+#LOCAL_SDK_VERSION := 9
 include $(LOCAL_PATH)/ssl-sources.mk
 include $(BUILD_SHARED_LIBRARY)
 
@@ -115,7 +133,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libssl_static-host
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/src/include 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk $(LOCAL_PATH)/ssl-sources.mk
 LOCAL_CFLAGS += -fvisibility=hidden -DBORINGSSL_SHARED_LIBRARY -DBORINGSSL_IMPLEMENTATION -DOPENSSL_SMALL -Wno-unused-parameter
 LOCAL_CXX_STL := none

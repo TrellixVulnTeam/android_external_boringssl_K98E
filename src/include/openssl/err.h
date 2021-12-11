@@ -112,7 +112,9 @@
 #include <stdio.h>
 
 #include <openssl/base.h>
-
+#ifdef ANDROID_BORINGSSL_LOG
+#include <android/log.h>
+#endif
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -296,14 +298,32 @@ OPENSSL_EXPORT void ERR_clear_system_error(void);
 
 /* OPENSSL_PUT_ERROR is used by OpenSSL code to add an error to the error
  * queue. */
-#define OPENSSL_PUT_ERROR(library, reason) \
-  ERR_put_error(ERR_LIB_##library, 0, reason, __FILE__, __LINE__)
+
+#ifdef ANDROID_BORINGSSL_LOG 
+#define OPENSSL_PUT_ERROR(library, reason)                         \
+	  do{\
+	  ERR_put_error(ERR_LIB_##library, 0, reason, __FILE__, __LINE__); \
+  	  __android_log_print(3,"OpenSSLLib","OpensslErr:Module:%d(%d:); file:%s ;Line:%d;Function:%s",ERR_LIB_##library, reason,\
+          __FILE__, __LINE__,__FUNCTION__);\
+          }while(0)
+#define OPENSSL_PUT_SYSTEM_ERROR() \
+	do{ \
+	ERR_put_error(ERR_LIB_SYS, 0, 0, __FILE__, __LINE__); \
+  	__android_log_print(3,"OpenSSLLib","OpensslErr:Module:%d(); file:%s ;Line:%d;Function:%s",ERR_LIB_SYS,  __FILE__, __LINE__,__FUNCTION__);\
+	}while(0)
+#else
+#define OPENSSL_PUT_ERROR(library,  reason)                         \
+  ERR_put_error(ERR_LIB_##library, 0, reason, __FILE__, \
+                __LINE__)
+
 
 /* OPENSSL_PUT_SYSTEM_ERROR is used by OpenSSL code to add an error from the
+
  * operating system to the error queue.
  * TODO(fork): include errno. */
 #define OPENSSL_PUT_SYSTEM_ERROR() \
   ERR_put_error(ERR_LIB_SYS, 0, 0, __FILE__, __LINE__);
+#endif
 
 /* ERR_put_error adds an error to the error queue, dropping the least recent
  * error if neccessary for space reasons. */

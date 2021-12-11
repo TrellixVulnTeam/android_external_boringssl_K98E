@@ -1121,6 +1121,7 @@ int ssl3_send_client_hello(SSL *ssl);
 int ssl3_get_server_hello(SSL *ssl);
 int ssl3_get_certificate_request(SSL *ssl);
 int ssl3_get_new_session_ticket(SSL *ssl);
+int ssl3_check_cert_status(SSL *s);
 int ssl3_get_cert_status(SSL *ssl);
 int ssl3_get_server_done(SSL *ssl);
 int ssl3_send_cert_verify(SSL *ssl);

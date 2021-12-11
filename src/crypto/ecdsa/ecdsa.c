@@ -305,8 +305,7 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
       goto err;
     }
-    if (!EC_POINT_get_affine_coordinates_GFp(group, tmp_point, tmp, NULL,
-                                             ctx)) {
+    if (!EC_POINT_get_affine_coordinates_GFp(group, tmp_point, tmp, NULL, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
       goto err;
     }

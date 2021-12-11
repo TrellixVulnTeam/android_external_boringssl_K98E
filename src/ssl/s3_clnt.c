@@ -4,21 +4,21 @@
  * This package is an SSL implementation written
  * by Eric Young (eay@cryptsoft.com).
  * The implementation was written so as to conform with Netscapes SSL.
- * 
+ *
  * This library is free for commercial and non-commercial use as long as
  * the following conditions are aheared to.  The following conditions
  * apply to all code found in this distribution, be it the RC4, RSA,
  * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
  * included with this distribution is covered by the same copyright terms
  * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- * 
+ *
  * Copyright remains Eric Young's, and as such any Copyright notices in
  * the code are not to be removed.
  * If this package is used in a product, Eric Young should be given attribution
  * as the author of the parts of the library used.
  * This can be in the form of a textual message at program startup or
  * in documentation (online or textual) provided with the package.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -33,10 +33,10 @@
  *     Eric Young (eay@cryptsoft.com)"
  *    The word 'cryptographic' can be left out if the rouines from the library
  *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from 
+ * 4. If you include any Windows specific code (or a derivative thereof) from
  *    the apps directory (application code) you must include an acknowledgement:
  *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -48,7 +48,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * The licence and distribution terms for any publically available version or
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
@@ -62,7 +62,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -110,7 +110,7 @@
 /* ====================================================================
  * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
  *
- * Portions of the attached software ("Contribution") are developed by 
+ * Portions of the attached software ("Contribution") are developed by
  * SUN MICROSYSTEMS, INC., and are contributed to the OpenSSL project.
  *
  * The Contribution is licensed pursuant to the OpenSSL open source
@@ -171,6 +171,10 @@
 #include "internal.h"
 #include "../crypto/dh/internal.h"
 
+#ifdef ANDROID_BORINGSSL_LOG
+#include <android/log.h>
+#define LOGD(...)  __android_log_print(3,"OpenSSLLib",__VA_ARGS__)
+#endif
 
 int ssl3_connect(SSL *ssl) {
   BUF_MEM *buf = NULL;
@@ -1162,10 +1166,13 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
     }
 
     ssl->session->key_exchange_info = DH_num_bits(dh);
+#if 0
     if (ssl->session->key_exchange_info < 1024) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DH_P_LENGTH);
       goto err;
-    } else if (ssl->session->key_exchange_info > 4096) {
+    } else
+#endif
+    if (ssl->session->key_exchange_info > 4096) {
       /* Overly large DHE groups are prohibitively expensive, so enforce a limit
        * to prevent a server from causing us to perform too expensive of a
        * computation. */
@@ -1500,6 +1507,45 @@ err:
   return -1;
 }
 
+int ssl3_check_cert_status(SSL *s) {
+  // TODO: need to parse according to OCSP response structure.
+  unsigned char *certStatusResponse = s->session->ocsp_response;
+  int certStatusResponseLength = s->session->ocsp_response_length;
+  int i = 0;
+  int start = 0;
+  for (i = 0; i <= certStatusResponseLength; i++) {
+    if (i >= 3) {
+      //signatureAlgorithm
+      if (certStatusResponse[i-3] == 0x30
+        && certStatusResponse[i-2] == 0x0D
+        && certStatusResponse[i-1] == 0x06
+        && certStatusResponse[i] == 0x09) {
+#ifdef ANDROID_BORINGSSL_LOG
+        LOGD("cert status check done");
+#endif
+        break;
+      }
+    }
+
+    if (certStatusResponse[i] == 0x81 || certStatusResponse[i] == 0xA1)
+    {
+      if (i+1 <= certStatusResponseLength) {
+#ifdef ANDROID_BORINGSSL_LOG
+        LOGD("certStatusResponse = %x %x", certStatusResponse[i], certStatusResponse[i+1]);
+#endif
+        if ((certStatusResponse[i] == 0x81 && certStatusResponse[i+1] == 0x0)
+            || (certStatusResponse[i] == 0xA1 && certStatusResponse[i+1] == 0x11))
+        {
+          // if 0x81 0x00 | 0xA1 0x11 then revoked
+          return SSL3_AD_CERTIFICATE_REVOKED;
+        }
+      }
+    }
+  }
+
+  return 1;
+}
+
 int ssl3_get_cert_status(SSL *ssl) {
   int ok, al;
   long n;
@@ -1538,6 +1584,21 @@ int ssl3_get_cert_status(SSL *ssl) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto f_err;
   }
+
+#ifdef ANDROID_BORINGSSL_LOG
+          LOGD("ssl->ocsp_stapling_enabled = %d", ssl->ocsp_stapling_enabled);
+#endif
+
+  if (ssl->ocsp_stapling_enabled == 1)
+  {
+    if (ssl3_check_cert_status(ssl) != 1) {
+      al = SSL_AD_BAD_CERTIFICATE_STATUS_RESPONSE;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_FATAL);
+      goto f_err;
+    }
+  }
+
+
   return 1;
 
 f_err:

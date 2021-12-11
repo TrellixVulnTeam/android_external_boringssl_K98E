@@ -148,7 +148,10 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
-
+#ifdef ANDROID_BORINGSSL_LOG
+#include <android/log.h> 
+#define LOGD(...)  __android_log_print(3,"OpenSSLLib",__VA_ARGS__)
+#endif
 
 /* tls1_P_hash computes the TLS P_<hash> function as described in RFC 5246,
  * section 5. It XORs |out_len| bytes to |out|, using |md| as the hash and
@@ -566,7 +569,65 @@ int tls1_generate_master_secret(SSL *ssl, uint8_t *out,
       return 0;
     }
   }
+#ifdef ANDROID_BORINGSSL_LOG
+#ifdef INIT_ENG_BUILD
+//print master key and id session_id;
 
+{
+ 
+  int i ;
+  unsigned char dumpbuffer[128];
+  char build_type[16]={0};
+
+
+  
+  //master key
+  memset(dumpbuffer,0,sizeof(dumpbuffer));
+  
+  for (i=0;i<SSL3_MASTER_SECRET_SIZE;i++)
+  {
+
+  	 sprintf(&dumpbuffer[i*2],"%02x",ssl->session->master_key[i]);
+  	}
+    dumpbuffer[i*2]='\0' ;
+  
+   LOGD("ssl(T1)=%p, MasterKey=%s ",ssl,dumpbuffer);
+   LOGD(" MasterKey Length = %d", i);
+
+   //session_id
+	memset(dumpbuffer,0,sizeof(dumpbuffer));
+	  
+	  for (i=0;i<SSL_MAX_SSL_SESSION_ID_LENGTH;i++)
+	  {
+		 /*if(ssl->session->session_id[i]=='\0' )
+			  break ;*/
+		 sprintf(&dumpbuffer[i*2],"%02x",ssl->session->session_id[i]);
+		}
+		dumpbuffer[i*2]='\0' ;
+	  
+	   LOGD("ssl(T1)=%p, SessionID=%s ",ssl,dumpbuffer);
+	   LOGD(" SessionID Length = %d", i);
+
+   //client_random
+   memset(dumpbuffer,0,sizeof(dumpbuffer));
+	  
+	  for (i=0;i<SSL3_RANDOM_SIZE;i++)
+	  {
+		 /*if(ssl->s3->client_random[i]=='\0' )
+			  break ;*/
+		 sprintf(&dumpbuffer[i*2],"%02x",ssl->s3->client_random[i]);
+		}
+		dumpbuffer[i*2]='\0' ;
+	  
+	   LOGD("ssl(T1)=%p, ClientRandom=%s ",ssl,dumpbuffer);
+	   LOGD(" ClientRandom Length = %d", i);
+   
+
+}
+
+////print master key and id session_id; end 
+#endif
+#endif
   return SSL3_MASTER_SECRET_SIZE;
 }
 
